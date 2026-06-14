@@ -141,7 +141,7 @@ function ProductPage() {
                 2 · Select {product.currency.toLowerCase()}
               </h2>
               <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {product.denominations.map((d) => {
+                {product.denominations.map((d: Denomination) => {
                   const active = selected.id === d.id;
                   return (
                     <button
