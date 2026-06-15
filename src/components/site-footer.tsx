@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Gamepad2, MessageCircle, Mail, Shield, Phone, Facebook, Instagram, Send } from "lucide-react";
 import {
   WHATSAPP_LINK,
+  CONTACT_PHONE,
   CONTACT_EMAIL,
   FACEBOOK_LINK,
   INSTAGRAM_LINK,
