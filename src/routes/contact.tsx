@@ -53,22 +53,55 @@ function Contact() {
           {sent && <p className="text-xs text-success">Thanks! We'll reply within 1 hour.</p>}
         </form>
 
-        <div className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           <a href={WHATSAPP_LINK} target="_blank" rel="noreferrer" className="surface-card flex items-start gap-4 p-5 transition-colors hover:bg-secondary/40">
             <span className="grid h-12 w-12 place-items-center rounded-xl bg-success/15 text-success"><MessageCircle className="h-6 w-6" /></span>
             <div>
-              <div className="font-semibold">WhatsApp Support</div>
-              <div className="text-sm text-muted-foreground">Fastest reply — under 5 minutes</div>
+              <div className="font-semibold">WhatsApp</div>
+              <div className="text-sm text-muted-foreground">{CONTACT_PHONE}</div>
               <div className="mt-1 text-sm font-medium text-foreground">Chat now →</div>
             </div>
           </a>
-          <div className="surface-card flex items-start gap-4 p-5">
+          <a href={`tel:${CONTACT_PHONE.replace(/\s/g, "")}`} className="surface-card flex items-start gap-4 p-5 transition-colors hover:bg-secondary/40">
+            <span className="grid h-12 w-12 place-items-center rounded-xl bg-primary/15 text-primary"><Phone className="h-6 w-6" /></span>
+            <div>
+              <div className="font-semibold">Phone</div>
+              <div className="text-sm text-muted-foreground">{CONTACT_PHONE}</div>
+              <div className="mt-1 text-sm font-medium text-foreground">Call now →</div>
+            </div>
+          </a>
+          <a href={`mailto:${CONTACT_EMAIL}`} className="surface-card flex items-start gap-4 p-5 transition-colors hover:bg-secondary/40">
             <span className="grid h-12 w-12 place-items-center rounded-xl bg-secondary text-foreground"><Mail className="h-6 w-6" /></span>
             <div>
               <div className="font-semibold">Email</div>
-              <div className="text-sm text-muted-foreground">support@fatuimarket.com</div>
+              <div className="text-sm text-muted-foreground">{CONTACT_EMAIL}</div>
+              <div className="mt-1 text-sm font-medium text-foreground">Send email →</div>
             </div>
-          </div>
+          </a>
+          <a href={FACEBOOK_LINK} target="_blank" rel="noreferrer" className="surface-card flex items-start gap-4 p-5 transition-colors hover:bg-secondary/40">
+            <span className="grid h-12 w-12 place-items-center rounded-xl bg-[#1877F2]/15 text-[#1877F2]"><Facebook className="h-6 w-6" /></span>
+            <div>
+              <div className="font-semibold">Facebook</div>
+              <div className="text-sm text-muted-foreground">Fatui Market</div>
+              <div className="mt-1 text-sm font-medium text-foreground">Visit page →</div>
+            </div>
+          </a>
+          <a href={INSTAGRAM_LINK} target="_blank" rel="noreferrer" className="surface-card flex items-start gap-4 p-5 transition-colors hover:bg-secondary/40">
+            <span className="grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 text-white"><Instagram className="h-6 w-6" /></span>
+            <div>
+              <div className="font-semibold">Instagram</div>
+              <div className="text-sm text-muted-foreground">@everyday_store_official</div>
+              <div className="mt-1 text-sm font-medium text-foreground">Follow us →</div>
+            </div>
+          </a>
+          <a href={TELEGRAM_LINK} target="_blank" rel="noreferrer" className="surface-card flex items-start gap-4 p-5 transition-colors hover:bg-secondary/40">
+            <span className="grid h-12 w-12 place-items-center rounded-xl bg-[#229ED9]/15 text-[#229ED9]"><Send className="h-6 w-6" /></span>
+            <div>
+              <div className="font-semibold">Telegram</div>
+              <div className="text-sm text-muted-foreground">@fatuimarket</div>
+              <div className="mt-1 text-sm font-medium text-foreground">Message us →</div>
+            </div>
+          </a>
           <div className="surface-card flex items-start gap-4 p-5">
             <span className="grid h-12 w-12 place-items-center rounded-xl bg-secondary text-foreground"><Clock className="h-6 w-6" /></span>
             <div>
