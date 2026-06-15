@@ -54,13 +54,31 @@ export function SiteFooter() {
                 <MessageCircle className="h-4 w-4 text-success" /> WhatsApp 24/7
               </a>
             </li>
-            <li className="inline-flex items-center gap-2">
-              <Mail className="h-4 w-4" /> support@fatuimarket.com
+            <li>
+              <a href={`tel:${CONTACT_PHONE.replace(/\s/g, "")}`} className="inline-flex items-center gap-2 hover:text-foreground">
+                <Phone className="h-4 w-4" /> {CONTACT_PHONE}
+              </a>
+            </li>
+            <li>
+              <a href={`mailto:${CONTACT_EMAIL}`} className="inline-flex items-center gap-2 hover:text-foreground">
+                <Mail className="h-4 w-4" /> {CONTACT_EMAIL}
+              </a>
             </li>
             <li className="inline-flex items-center gap-2">
               <Shield className="h-4 w-4" /> Secure payments
             </li>
           </ul>
+          <div className="mt-4 flex items-center gap-3">
+            <a href={FACEBOOK_LINK} target="_blank" rel="noreferrer" aria-label="Facebook" className="grid h-9 w-9 place-items-center rounded-full bg-secondary text-foreground transition-colors hover:bg-[#1877F2] hover:text-white">
+              <Facebook className="h-4 w-4" />
+            </a>
+            <a href={INSTAGRAM_LINK} target="_blank" rel="noreferrer" aria-label="Instagram" className="grid h-9 w-9 place-items-center rounded-full bg-secondary text-foreground transition-colors hover:bg-gradient-to-br hover:from-purple-500 hover:via-pink-500 hover:to-orange-400 hover:text-white">
+              <Instagram className="h-4 w-4" />
+            </a>
+            <a href={TELEGRAM_LINK} target="_blank" rel="noreferrer" aria-label="Telegram" className="grid h-9 w-9 place-items-center rounded-full bg-secondary text-foreground transition-colors hover:bg-[#229ED9] hover:text-white">
+              <Send className="h-4 w-4" />
+            </a>
+          </div>
         </div>
       </div>
       <div className="border-t border-border py-6 text-center text-xs text-muted-foreground">
