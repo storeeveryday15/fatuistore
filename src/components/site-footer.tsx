@@ -1,6 +1,12 @@
 import { Link } from "@tanstack/react-router";
-import { Gamepad2, MessageCircle, Mail, Shield } from "lucide-react";
-import { WHATSAPP_LINK } from "@/lib/products";
+import { Gamepad2, MessageCircle, Mail, Shield, Phone, Facebook, Instagram, Send } from "lucide-react";
+import {
+  WHATSAPP_LINK,
+  CONTACT_EMAIL,
+  FACEBOOK_LINK,
+  INSTAGRAM_LINK,
+  TELEGRAM_LINK,
+} from "@/lib/products";
 
 export function SiteFooter() {
   return (

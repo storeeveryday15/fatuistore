@@ -1,13 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Mail, MessageCircle, Clock, MapPin } from "lucide-react";
-import { WHATSAPP_LINK } from "@/lib/products";
+import { Mail, MessageCircle, Clock, MapPin, Phone, Facebook, Instagram, Send } from "lucide-react";
+import {
+  WHATSAPP_LINK,
+  CONTACT_PHONE,
+  CONTACT_EMAIL,
+  FACEBOOK_LINK,
+  INSTAGRAM_LINK,
+  TELEGRAM_LINK,
+} from "@/lib/products";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
     meta: [
       { title: "Contact — Fatui Market" },
-      { name: "description", content: "Get in touch with Fatui Market support via WhatsApp, email or our contact form." },
+      { name: "description", content: "Get in touch with Fatui Market support via WhatsApp, Facebook, Instagram, Telegram, email or phone." },
       { property: "og:title", content: "Contact — Fatui Market" },
       { property: "og:description", content: "We're here 24/7 to help with your top-up." },
     ],
