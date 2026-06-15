@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LegalPage } from "@/components/legal-page";
+import { CONTACT_EMAIL } from "@/lib/products";
 
 export const Route = createFileRoute("/privacy")({
   head: () => ({
@@ -20,7 +21,7 @@ export const Route = createFileRoute("/privacy")({
         { h: "3. Cookies & analytics", p: "We use essential cookies to keep you signed in and remember your theme preference. Anonymous analytics help us improve the site." },
         { h: "4. Third-party services", p: "We share data only with the providers needed to fulfill your order — game publishers (for ID validation), payment gateways, and email providers." },
         { h: "5. Data retention", p: "Order records are kept for 24 months for accounting and dispute resolution. You may request deletion of your account at any time." },
-        { h: "6. Your rights", p: "You may request access, correction, or deletion of your personal data by emailing support@fatuimarket.com. We respond within 7 business days." },
+        { h: "6. Your rights", p: `You may request access, correction, or deletion of your personal data by emailing ${CONTACT_EMAIL}. We respond within 7 business days.` },
         { h: "7. Children's privacy", p: "Our service is not directed at children under 13. We do not knowingly collect data from minors." },
         { h: "8. Updates to this policy", p: "We may update this policy from time to time. The 'Last updated' date at the top reflects the latest revision." },
       ]}
