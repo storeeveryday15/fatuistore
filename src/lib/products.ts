@@ -149,7 +149,12 @@ export const PRODUCTS: Product[] = [
 export const getProduct = (slug: string) =>
   PRODUCTS.find((p) => p.slug === slug);
 
-export const WHATSAPP_NUMBER = "8801700000000"; // placeholder
+export const WHATSAPP_NUMBER = "917679393645";
 export const WHATSAPP_LINK = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
   "Hi Fatui Market, I need help with my order."
 )}`;
+export const CONTACT_PHONE = "+91 76793 93645";
+export const CONTACT_EMAIL = "fatuimarket@gmail.com";
+export const FACEBOOK_LINK = "https://www.facebook.com/share/192oekurGU/";
+export const INSTAGRAM_LINK = "https://www.instagram.com/everyday_store_official?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==";
+export const TELEGRAM_LINK = "https://t.me/fatuimarket";
