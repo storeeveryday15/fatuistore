@@ -163,6 +163,12 @@ function ProductPage() {
         status: "pending_payment",
       });
       if (error) throw error;
+      // Fire-and-forget notification (Telegram/Email if secrets configured)
+      fetch("/api/public/notify-order", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ order_code: code }),
+      }).catch(() => {});
       toast.success(`Order ${code} created!`);
       navigate({ to: "/orders/$code", params: { code } });
     } catch (err: unknown) {
