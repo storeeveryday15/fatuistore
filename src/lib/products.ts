@@ -165,3 +165,8 @@ export const CONTACT_EMAIL = "fatuimarket@gmail.com";
 export const FACEBOOK_LINK = "https://www.facebook.com/share/192oekurGU/";
 export const INSTAGRAM_LINK = "https://www.instagram.com/everyday_store_official?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==";
 export const TELEGRAM_LINK = "https://t.me/fatuimarket";
+
+export const UPI_ID = "7679393645@kotakbank";
+export const UPI_MERCHANT = "Lakpa Tamang";
+export const buildUpiLink = (amountInr: number, note?: string) =>
+  `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(UPI_MERCHANT)}&am=${amountInr}&cu=INR${note ? `&tn=${encodeURIComponent(note)}` : ""}`;
