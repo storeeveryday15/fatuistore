@@ -54,6 +54,7 @@ export const PRODUCTS: Product[] = [
       { id: "m8", label: "Weekly Lite Pass", price: 0.55, priceINR: 45 },
       { id: "m9", label: "Weekly Diamond Pass", price: 1.2, priceINR: 99 },
       { id: "m10", label: "Membership", price: 4.8, priceINR: 399 },
+    ],
   },
   {
     slug: "free-fire",
