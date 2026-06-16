@@ -65,7 +65,8 @@ function OrderPage() {
   }, [code]);
 
   const upiLink = useMemo(() => {
-    if (!order || order.region !== "IN" || !order.amount_inr) return "";
+    if (!order || order === "loading") return "";
+    if (order.region !== "IN" || !order.amount_inr) return "";
     return buildUpiLink(Number(order.amount_inr), `${order.order_code} ${order.product_name}`);
   }, [order]);
 
