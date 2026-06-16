@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PRODUCTS } from "@/lib/products";
 import heroBg from "@/assets/hero-bg.jpg";
 import { Zap, ShieldCheck, Clock, Headphones, ArrowRight, Sparkles } from "lucide-react";
+import { LiveOrdersTicker } from "@/components/live-orders-ticker";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -34,12 +35,16 @@ function Home() {
             Trusted by 50,000+ gamers
           </div>
           <h1 className="mt-5 max-w-3xl text-4xl font-bold leading-[1.05] tracking-tight md:text-6xl lg:text-7xl">
-            Top up <span className="gradient-text">your game</span>
+            Fatui <span className="gradient-text">Market</span>
             <br />
-            in seconds, not hours.
+            top up in seconds.
           </h1>
+
+          {/* Blurred live orders ticker */}
+          <LiveOrdersTicker />
+
           <p className="mt-5 max-w-xl text-base text-muted-foreground md:text-lg">
-            Instant delivery for Mobile Legends, Free Fire, PUBG, Valorant, Steam Wallet and Google Play. Pay with cards, mobile wallets or crypto.
+            Instant delivery for Mobile Legends, Free Fire, PUBG, Valorant, Steam Wallet and Google Play. Pay with UPI (India) or Card / PayPal (international).
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a
