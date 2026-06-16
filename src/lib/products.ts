@@ -8,9 +8,14 @@ import gplay from "@/assets/game-gplay.jpg";
 export type Denomination = {
   id: string;
   label: string;
-  price: number;
+  price: number; // USD
+  priceINR?: number; // explicit INR; otherwise computed
   bonus?: string;
 };
+
+export const USD_TO_INR = 83;
+export const getINR = (d: Denomination) =>
+  d.priceINR ?? Math.round(d.price * USD_TO_INR);
 
 export type Product = {
   slug: string;
@@ -46,7 +51,9 @@ export const PRODUCTS: Product[] = [
       { id: "m5", label: "706 Diamonds", price: 12, bonus: "+5%" },
       { id: "m6", label: "1412 Diamonds", price: 24, bonus: "+10%" },
       { id: "m7", label: "2195 Diamonds", price: 38, bonus: "+15%" },
-      { id: "m8", label: "Weekly Diamond Pass", price: 1.6 },
+      { id: "m8", label: "Weekly Lite Pass", price: 0.55, priceINR: 45 },
+      { id: "m9", label: "Weekly Diamond Pass", price: 1.2, priceINR: 99 },
+      { id: "m10", label: "Membership", price: 4.8, priceINR: 399 },
     ],
   },
   {
@@ -158,3 +165,8 @@ export const CONTACT_EMAIL = "fatuimarket@gmail.com";
 export const FACEBOOK_LINK = "https://www.facebook.com/share/192oekurGU/";
 export const INSTAGRAM_LINK = "https://www.instagram.com/everyday_store_official?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==";
 export const TELEGRAM_LINK = "https://t.me/fatuimarket";
+
+export const UPI_ID = "7679393645@kotakbank";
+export const UPI_MERCHANT = "Lakpa Tamang";
+export const buildUpiLink = (amountInr: number, note?: string) =>
+  `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(UPI_MERCHANT)}&am=${amountInr}&cu=INR${note ? `&tn=${encodeURIComponent(note)}` : ""}`;
