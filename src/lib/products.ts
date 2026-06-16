@@ -8,9 +8,14 @@ import gplay from "@/assets/game-gplay.jpg";
 export type Denomination = {
   id: string;
   label: string;
-  price: number;
+  price: number; // USD
+  priceINR?: number; // explicit INR; otherwise computed
   bonus?: string;
 };
+
+export const USD_TO_INR = 83;
+export const getINR = (d: Denomination) =>
+  d.priceINR ?? Math.round(d.price * USD_TO_INR);
 
 export type Product = {
   slug: string;
