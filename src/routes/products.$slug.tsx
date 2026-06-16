@@ -1,7 +1,26 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { PRODUCTS, getProduct, type Denomination } from "@/lib/products";
-import { ArrowLeft, CreditCard, Wallet, Smartphone, Bitcoin, Check, Lock } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import QRCode from "qrcode";
+import {
+  PRODUCTS,
+  getProduct,
+  getINR,
+  buildUpiLink,
+  UPI_ID,
+  UPI_MERCHANT,
+  WHATSAPP_NUMBER,
+  type Denomination,
+} from "@/lib/products";
+import {
+  ArrowLeft,
+  CreditCard,
+  Wallet,
+  Check,
+  Lock,
+  Smartphone,
+  Copy,
+  Globe,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/products/$slug")({
@@ -41,12 +60,35 @@ export const Route = createFileRoute("/products/$slug")({
   component: ProductPage,
 });
 
-const GATEWAYS = [
-  { id: "card", label: "Card", desc: "Visa / Mastercard", icon: CreditCard },
-  { id: "wallet", label: "Mobile Wallet", desc: "bKash / Nagad / Rocket", icon: Smartphone },
-  { id: "paypal", label: "PayPal", desc: "Pay with PayPal", icon: Wallet },
-  { id: "crypto", label: "Crypto", desc: "USDT / BTC", icon: Bitcoin },
-];
+type Region = "IN" | "INT";
+
+function useDetectedRegion(): [Region, (r: Region) => void] {
+  const [region, setRegion] = useState<Region>("INT");
+  useEffect(() => {
+    const stored = typeof window !== "undefined" ? localStorage.getItem("fm_region") : null;
+    if (stored === "IN" || stored === "INT") {
+      setRegion(stored);
+      return;
+    }
+    // Detect via free IP geolocation
+    fetch("https://ipwho.is/?fields=country_code")
+      .then((r) => r.json())
+      .then((d: { country_code?: string }) => {
+        const r: Region = d?.country_code === "IN" ? "IN" : "INT";
+        setRegion(r);
+      })
+      .catch(() => {
+        // Fallback: locale
+        const loc = typeof navigator !== "undefined" ? navigator.language : "";
+        setRegion(loc?.toLowerCase().includes("in") ? "IN" : "INT");
+      });
+  }, []);
+  const update = (r: Region) => {
+    setRegion(r);
+    try { localStorage.setItem("fm_region", r); } catch {}
+  };
+  return [region, update];
+}
 
 function ProductPage() {
   const { product } = Route.useLoaderData();
@@ -54,17 +96,48 @@ function ProductPage() {
   const [playerId, setPlayerId] = useState("");
   const [zone, setZone] = useState("");
   const [email, setEmail] = useState("");
-  const [gateway, setGateway] = useState("card");
-  const [submitted, setSubmitted] = useState(false);
+  const [region, setRegion] = useDetectedRegion();
+  const [gateway, setGateway] = useState<"upi" | "card" | "paypal">("upi");
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  const [copied, setCopied] = useState(false);
 
-  const total = useMemo(() => selected.price.toFixed(2), [selected]);
+  // Keep gateway consistent with region
+  useEffect(() => {
+    setGateway(region === "IN" ? "upi" : "card");
+  }, [region]);
 
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Payment gateway integration placeholder
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 5000);
+  const inrAmount = useMemo(() => getINR(selected), [selected]);
+  const usdAmount = useMemo(() => selected.price.toFixed(2), [selected]);
+
+  const upiLink = useMemo(
+    () => buildUpiLink(inrAmount, `${product.name} — ${selected.label}`),
+    [inrAmount, product.name, selected.label]
+  );
+
+  // Generate QR whenever the UPI link changes (only relevant for IN)
+  useEffect(() => {
+    if (region !== "IN") return;
+    let cancelled = false;
+    QRCode.toDataURL(upiLink, { width: 320, margin: 1, color: { dark: "#000000", light: "#ffffff" } })
+      .then((url) => { if (!cancelled) setQrDataUrl(url); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [upiLink, region]);
+
+  const copyUpi = async () => {
+    try {
+      await navigator.clipboard.writeText(UPI_ID);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {}
   };
+
+  const waMessage = encodeURIComponent(
+    `Hi Fatui Market, I just paid ₹${inrAmount} via UPI for ${product.name} — ${selected.label}.` +
+      (product.needsPlayerId ? `\nPlayer ID: ${playerId}${zone ? ` (Zone ${zone})` : ""}` : `\nEmail: ${email}`) +
+      `\nPlease confirm my order.`
+  );
+  const waConfirmLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${waMessage}`;
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-10">
@@ -73,7 +146,7 @@ function ProductPage() {
       </Link>
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[1.2fr_1fr]">
-        {/* Left: Form */}
+        {/* Left */}
         <div className="space-y-6">
           <div className="surface-card overflow-hidden">
             <div className="relative h-48 md:h-64">
@@ -90,7 +163,38 @@ function ProductPage() {
             </div>
           </div>
 
-          <form onSubmit={onSubmit} className="space-y-6">
+          {/* Region toggle */}
+          <div className="surface-card flex flex-wrap items-center justify-between gap-3 p-4">
+            <div className="flex items-center gap-2 text-sm">
+              <Globe className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Paying from</span>
+              <span className="font-semibold">{region === "IN" ? "🇮🇳 India (INR)" : "🌍 International (USD)"}</span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setRegion("IN")}
+                className={cn(
+                  "rounded-lg border px-3 py-1.5 text-xs font-medium transition-all",
+                  region === "IN" ? "border-[var(--neon)] glow-ring" : "border-border hover:border-foreground/30"
+                )}
+              >
+                India / UPI
+              </button>
+              <button
+                type="button"
+                onClick={() => setRegion("INT")}
+                className={cn(
+                  "rounded-lg border px-3 py-1.5 text-xs font-medium transition-all",
+                  region === "INT" ? "border-[var(--neon)] glow-ring" : "border-border hover:border-foreground/30"
+                )}
+              >
+                International
+              </button>
+            </div>
+          </div>
+
+          <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
             {/* Account info */}
             <section className="surface-card p-5">
               <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">1 · Account details</h2>
@@ -150,9 +254,7 @@ function ProductPage() {
                       onClick={() => setSelected(d)}
                       className={cn(
                         "group relative rounded-xl border bg-background/40 p-4 text-left transition-all",
-                        active
-                          ? "border-[var(--neon)] glow-ring"
-                          : "border-border hover:border-foreground/30"
+                        active ? "border-[var(--neon)] glow-ring" : "border-border hover:border-foreground/30"
                       )}
                     >
                       {d.bonus && (
@@ -161,10 +263,10 @@ function ProductPage() {
                         </span>
                       )}
                       <div className="text-sm font-semibold">{d.label}</div>
-                      <div className="mt-1 text-xs text-muted-foreground">${d.price.toFixed(2)} USD</div>
-                      {active && (
-                        <Check className="absolute bottom-3 right-3 h-4 w-4 text-[var(--neon)]" />
-                      )}
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {region === "IN" ? `₹${getINR(d)}` : `$${d.price.toFixed(2)} USD`}
+                      </div>
+                      {active && <Check className="absolute bottom-3 right-3 h-4 w-4 text-[var(--neon)]" />}
                     </button>
                   );
                 })}
@@ -174,33 +276,93 @@ function ProductPage() {
             {/* Payment */}
             <section className="surface-card p-5">
               <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">3 · Payment method</h2>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {GATEWAYS.map((g) => {
-                  const active = gateway === g.id;
-                  return (
-                    <button
-                      type="button"
-                      key={g.id}
-                      onClick={() => setGateway(g.id)}
-                      className={cn(
-                        "flex items-center gap-3 rounded-xl border p-4 text-left transition-all",
-                        active ? "border-[var(--neon)] glow-ring" : "border-border hover:border-foreground/30"
+
+              {region === "IN" ? (
+                <div className="mt-4 grid gap-5 md:grid-cols-[auto_1fr] md:items-center">
+                  <div className="flex justify-center">
+                    <div className="rounded-2xl bg-white p-3 shadow-lg">
+                      {qrDataUrl ? (
+                        <img src={qrDataUrl} alt={`UPI QR for ₹${inrAmount}`} width={220} height={220} />
+                      ) : (
+                        <div className="grid h-[220px] w-[220px] place-items-center text-xs text-muted-foreground">
+                          Generating QR…
+                        </div>
                       )}
-                    >
-                      <span className="grid h-10 w-10 place-items-center rounded-lg bg-secondary text-foreground">
-                        <g.icon className="h-5 w-5" />
-                      </span>
-                      <div>
-                        <div className="text-sm font-semibold">{g.label}</div>
-                        <div className="text-xs text-muted-foreground">{g.desc}</div>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="text-xs uppercase tracking-wider text-muted-foreground">Amount</div>
+                      <div className="text-3xl font-bold gradient-text">₹{inrAmount}</div>
+                    </div>
+                    <div className="rounded-lg border border-border bg-background/40 p-3 text-sm">
+                      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Merchant</div>
+                      <div className="font-semibold">{UPI_MERCHANT}</div>
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <code className="truncate text-xs">{UPI_ID}</code>
+                        <button
+                          type="button"
+                          onClick={copyUpi}
+                          className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] hover:border-foreground/30"
+                        >
+                          <Copy className="h-3 w-3" /> {copied ? "Copied" : "Copy"}
+                        </button>
                       </div>
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="mt-4 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Lock className="h-3.5 w-3.5" /> Payment gateway integration placeholder — connect Stripe / SSLCommerz on checkout.
-              </p>
+                    </div>
+                    <a
+                      href={upiLink}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[image:var(--gradient-primary)] px-5 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition-transform hover:scale-[1.01]"
+                    >
+                      <Smartphone className="h-4 w-4" /> Pay ₹{inrAmount} with UPI
+                    </a>
+                    <p className="text-[11px] text-muted-foreground">
+                      Scan the QR with any UPI app (GPay, PhonePe, Paytm) or tap the button on mobile. After paying, send the
+                      screenshot via WhatsApp to confirm your order.
+                    </p>
+                    <a
+                      href={waConfirmLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border px-5 py-2.5 text-xs font-medium hover:border-foreground/30"
+                    >
+                      Confirm payment on WhatsApp
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {([
+                      { id: "card", label: "Card", desc: "Visa / Mastercard / Amex", icon: CreditCard },
+                      { id: "paypal", label: "PayPal", desc: "Pay with your PayPal", icon: Wallet },
+                    ] as const).map((g) => {
+                      const active = gateway === g.id;
+                      return (
+                        <button
+                          type="button"
+                          key={g.id}
+                          onClick={() => setGateway(g.id)}
+                          className={cn(
+                            "flex items-center gap-3 rounded-xl border p-4 text-left transition-all",
+                            active ? "border-[var(--neon)] glow-ring" : "border-border hover:border-foreground/30"
+                          )}
+                        >
+                          <span className="grid h-10 w-10 place-items-center rounded-lg bg-secondary text-foreground">
+                            <g.icon className="h-5 w-5" />
+                          </span>
+                          <div>
+                            <div className="text-sm font-semibold">{g.label}</div>
+                            <div className="text-xs text-muted-foreground">{g.desc}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-4 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Lock className="h-3.5 w-3.5" /> Secure checkout — PayPal / Stripe integration placeholder.
+                  </p>
+                </>
+              )}
             </section>
           </form>
         </div>
@@ -217,25 +379,34 @@ function ProductPage() {
                 value={product.needsPlayerId ? (playerId || "—") : (email || "—")}
               />
               {product.slug === "mobile-legends" && <Row label="Zone" value={zone || "—"} />}
-              <Row label="Payment" value={GATEWAYS.find((g) => g.id === gateway)?.label ?? "—"} />
+              <Row
+                label="Payment"
+                value={region === "IN" ? "UPI" : gateway === "paypal" ? "PayPal" : "Card"}
+              />
               <div className="my-2 h-px bg-border" />
               <div className="flex items-end justify-between">
                 <span className="text-xs uppercase tracking-wider text-muted-foreground">Total</span>
-                <span className="text-3xl font-bold gradient-text">${total}</span>
+                <span className="text-3xl font-bold gradient-text">
+                  {region === "IN" ? `₹${inrAmount}` : `$${usdAmount}`}
+                </span>
               </div>
             </div>
 
-            <button
-              onClick={onSubmit}
-              className="mt-6 w-full rounded-xl bg-[image:var(--gradient-primary)] px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition-transform hover:scale-[1.01]"
-            >
-              {submitted ? "Redirecting to gateway…" : `Pay $${total} now`}
-            </button>
-
-            {submitted && (
-              <div className="mt-3 rounded-lg border border-success/30 bg-success/10 p-3 text-xs text-success">
-                Demo only — connect your live payment gateway in <code className="font-mono">/products/$slug</code>.
-              </div>
+            {region === "IN" ? (
+              <a
+                href={upiLink}
+                className="mt-6 block w-full rounded-xl bg-[image:var(--gradient-primary)] px-5 py-3.5 text-center text-sm font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition-transform hover:scale-[1.01]"
+              >
+                Pay ₹{inrAmount} with UPI
+              </a>
+            ) : (
+              <button
+                type="button"
+                onClick={() => alert("Connect Stripe / PayPal to enable live checkout.")}
+                className="mt-6 w-full rounded-xl bg-[image:var(--gradient-primary)] px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition-transform hover:scale-[1.01]"
+              >
+                Pay ${usdAmount} now
+              </button>
             )}
 
             <p className="mt-4 text-center text-[11px] text-muted-foreground">
