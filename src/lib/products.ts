@@ -51,8 +51,9 @@ export const PRODUCTS: Product[] = [
       { id: "m5", label: "706 Diamonds", price: 12, bonus: "+5%" },
       { id: "m6", label: "1412 Diamonds", price: 24, bonus: "+10%" },
       { id: "m7", label: "2195 Diamonds", price: 38, bonus: "+15%" },
-      { id: "m8", label: "Weekly Diamond Pass", price: 1.6 },
-    ],
+      { id: "m8", label: "Weekly Lite Pass", price: 0.55, priceINR: 45 },
+      { id: "m9", label: "Weekly Diamond Pass", price: 1.2, priceINR: 99 },
+      { id: "m10", label: "Membership", price: 4.8, priceINR: 399 },
   },
   {
     slug: "free-fire",
