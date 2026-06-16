@@ -15,6 +15,8 @@ import { ThemeProvider } from "../components/theme-provider";
 import { SiteHeader } from "../components/site-header";
 import { SiteFooter } from "../components/site-footer";
 import { WhatsappFloat } from "../components/whatsapp-button";
+import { ChatWidget } from "../components/chat-widget";
+import { Toaster } from "sonner";
 
 function NotFoundComponent() {
   return (
@@ -95,7 +97,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/b4ca7ff9-2a09-479a-adc3-9104d2453781/id-preview-ef45a80a--5c2f875a-ea14-40c3-8573-99f4e19c2135.lovable.app-1781444693620.png" },
     ],
     links: [
-      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "icon", type: "image/jpeg", href: "/favicon.jpeg" },
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
@@ -135,6 +137,8 @@ function RootComponent() {
           </main>
           <SiteFooter />
           <WhatsappFloat />
+          <ChatWidget />
+          <Toaster richColors position="top-right" />
         </div>
       </ThemeProvider>
     </QueryClientProvider>

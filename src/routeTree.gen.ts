@@ -12,9 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as RefundRouteImport } from './routes/refund'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
+import { Route as OrdersCodeRouteImport } from './routes/orders.$code'
+import { Route as ApiPublicNotifyOrderRouteImport } from './routes/api/public/notify-order'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -31,9 +36,24 @@ const PrivacyRoute = PrivacyRouteImport.update({
   path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContactRoute = ContactRouteImport.update({
   id: '/contact',
   path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -46,60 +66,111 @@ const ProductsSlugRoute = ProductsSlugRouteImport.update({
   path: '/products/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrdersCodeRoute = OrdersCodeRouteImport.update({
+  id: '/orders/$code',
+  path: '/orders/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicNotifyOrderRoute = ApiPublicNotifyOrderRouteImport.update({
+  id: '/api/public/notify-order',
+  path: '/api/public/notify-order',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
+  '/dashboard': typeof DashboardRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
   '/terms': typeof TermsRoute
+  '/orders/$code': typeof OrdersCodeRoute
   '/products/$slug': typeof ProductsSlugRoute
+  '/api/public/notify-order': typeof ApiPublicNotifyOrderRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
+  '/dashboard': typeof DashboardRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
   '/terms': typeof TermsRoute
+  '/orders/$code': typeof OrdersCodeRoute
   '/products/$slug': typeof ProductsSlugRoute
+  '/api/public/notify-order': typeof ApiPublicNotifyOrderRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
+  '/dashboard': typeof DashboardRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
   '/terms': typeof TermsRoute
+  '/orders/$code': typeof OrdersCodeRoute
   '/products/$slug': typeof ProductsSlugRoute
+  '/api/public/notify-order': typeof ApiPublicNotifyOrderRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
+    | '/auth'
     | '/contact'
+    | '/dashboard'
     | '/privacy'
     | '/refund'
     | '/terms'
+    | '/orders/$code'
     | '/products/$slug'
+    | '/api/public/notify-order'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/contact' | '/privacy' | '/refund' | '/terms' | '/products/$slug'
+  to:
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/contact'
+    | '/dashboard'
+    | '/privacy'
+    | '/refund'
+    | '/terms'
+    | '/orders/$code'
+    | '/products/$slug'
+    | '/api/public/notify-order'
   id:
     | '__root__'
     | '/'
+    | '/admin'
+    | '/auth'
     | '/contact'
+    | '/dashboard'
     | '/privacy'
     | '/refund'
     | '/terms'
+    | '/orders/$code'
     | '/products/$slug'
+    | '/api/public/notify-order'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
+  AuthRoute: typeof AuthRoute
   ContactRoute: typeof ContactRoute
+  DashboardRoute: typeof DashboardRoute
   PrivacyRoute: typeof PrivacyRoute
   RefundRoute: typeof RefundRoute
   TermsRoute: typeof TermsRoute
+  OrdersCodeRoute: typeof OrdersCodeRoute
   ProductsSlugRoute: typeof ProductsSlugRoute
+  ApiPublicNotifyOrderRoute: typeof ApiPublicNotifyOrderRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -125,11 +196,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/contact': {
       id: '/contact'
       path: '/contact'
       fullPath: '/contact'
       preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -146,27 +238,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProductsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/orders/$code': {
+      id: '/orders/$code'
+      path: '/orders/$code'
+      fullPath: '/orders/$code'
+      preLoaderRoute: typeof OrdersCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/notify-order': {
+      id: '/api/public/notify-order'
+      path: '/api/public/notify-order'
+      fullPath: '/api/public/notify-order'
+      preLoaderRoute: typeof ApiPublicNotifyOrderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
+  AuthRoute: AuthRoute,
   ContactRoute: ContactRoute,
+  DashboardRoute: DashboardRoute,
   PrivacyRoute: PrivacyRoute,
   RefundRoute: RefundRoute,
   TermsRoute: TermsRoute,
+  OrdersCodeRoute: OrdersCodeRoute,
   ProductsSlugRoute: ProductsSlugRoute,
+  ApiPublicNotifyOrderRoute: ApiPublicNotifyOrderRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

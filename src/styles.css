@@ -158,3 +158,14 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
 }
+
+/* Live orders ticker */
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.ticker-track {
+  animation: ticker-scroll 38s linear infinite;
+  width: max-content;
+}
+.ticker-track:hover { animation-play-state: paused; }

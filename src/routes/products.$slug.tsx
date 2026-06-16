@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 import {
@@ -6,9 +6,9 @@ import {
   getProduct,
   getINR,
   buildUpiLink,
+  generateOrderCode,
   UPI_ID,
   UPI_MERCHANT,
-  WHATSAPP_NUMBER,
   type Denomination,
 } from "@/lib/products";
 import {
@@ -22,6 +22,8 @@ import {
   Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/products/$slug")({
   loader: ({ params }) => {
@@ -132,12 +134,49 @@ function ProductPage() {
     } catch {}
   };
 
-  const waMessage = encodeURIComponent(
-    `Hi Fatui Market, I just paid ₹${inrAmount} via UPI for ${product.name} — ${selected.label}.` +
-      (product.needsPlayerId ? `\nPlayer ID: ${playerId}${zone ? ` (Zone ${zone})` : ""}` : `\nEmail: ${email}`) +
-      `\nPlease confirm my order.`
-  );
-  const waConfirmLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${waMessage}`;
+  const navigate = useNavigate();
+  const [placing, setPlacing] = useState(false);
+
+  const placeOrder = async () => {
+    if (product.needsPlayerId && !playerId.trim()) return toast.error(`Enter your ${product.idLabel ?? "Player ID"}`);
+    if (product.slug === "mobile-legends" && !zone.trim()) return toast.error("Enter your Zone ID");
+    if (!product.needsPlayerId && !email.trim()) return toast.error("Enter your delivery email");
+    setPlacing(true);
+    try {
+      const { data: u } = await supabase.auth.getUser();
+      const code = generateOrderCode();
+      const game_id = product.needsPlayerId ? `${playerId}${zone ? ` (${zone})` : ""}` : null;
+      const { error } = await supabase.from("orders").insert({
+        order_code: code,
+        user_id: u.user?.id ?? null,
+        customer_email: u.user?.email ?? email ?? null,
+        customer_contact: null,
+        game_id,
+        product_slug: product.slug,
+        product_name: product.name,
+        tier_label: selected.label,
+        amount_inr: region === "IN" ? inrAmount : null,
+        amount_usd: region !== "IN" ? Number(usdAmount) : null,
+        currency: region === "IN" ? "INR" : "USD",
+        region,
+        payment_method: region === "IN" ? "upi" : gateway,
+        status: "pending_payment",
+      });
+      if (error) throw error;
+      // Fire-and-forget notification (Telegram/Email if secrets configured)
+      fetch("/api/public/notify-order", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ order_code: code }),
+      }).catch(() => {});
+      toast.success(`Order ${code} created!`);
+      navigate({ to: "/orders/$code", params: { code } });
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Could not create order");
+    } finally {
+      setPlacing(false);
+    }
+  };
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-10">
@@ -316,17 +355,8 @@ function ProductPage() {
                       <Smartphone className="h-4 w-4" /> Pay ₹{inrAmount} with UPI
                     </a>
                     <p className="text-[11px] text-muted-foreground">
-                      Scan the QR with any UPI app (GPay, PhonePe, Paytm) or tap the button on mobile. After paying, send the
-                      screenshot via WhatsApp to confirm your order.
+                      The QR shows a sample. To get a unique Order ID, save your details, and pay & confirm, click <b>Create order &amp; continue</b> on the right.
                     </p>
-                    <a
-                      href={waConfirmLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border px-5 py-2.5 text-xs font-medium hover:border-foreground/30"
-                    >
-                      Confirm payment on WhatsApp
-                    </a>
                   </div>
                 </div>
               ) : (
@@ -393,19 +423,22 @@ function ProductPage() {
             </div>
 
             {region === "IN" ? (
-              <a
-                href={upiLink}
-                className="mt-6 block w-full rounded-xl bg-[image:var(--gradient-primary)] px-5 py-3.5 text-center text-sm font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition-transform hover:scale-[1.01]"
+              <button
+                type="button"
+                disabled={placing}
+                onClick={placeOrder}
+                className="mt-6 w-full rounded-xl bg-[image:var(--gradient-primary)] px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition-transform hover:scale-[1.01] disabled:opacity-60"
               >
-                Pay ₹{inrAmount} with UPI
-              </a>
+                {placing ? "Creating order…" : `Create order & pay ₹${inrAmount}`}
+              </button>
             ) : (
               <button
                 type="button"
-                onClick={() => alert("Connect Stripe / PayPal to enable live checkout.")}
-                className="mt-6 w-full rounded-xl bg-[image:var(--gradient-primary)] px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition-transform hover:scale-[1.01]"
+                disabled={placing}
+                onClick={placeOrder}
+                className="mt-6 w-full rounded-xl bg-[image:var(--gradient-primary)] px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-glow)] transition-transform hover:scale-[1.01] disabled:opacity-60"
               >
-                Pay ${usdAmount} now
+                {placing ? "Creating order…" : `Create order — $${usdAmount}`}
               </button>
             )}
 
