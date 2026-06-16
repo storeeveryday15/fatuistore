@@ -1,9 +1,11 @@
-import mlbb from "@/assets/game-mlbb.jpg";
+import logo from "@/assets/fatui-logo.asset.json";
 import ff from "@/assets/game-ff.jpg";
 import pubg from "@/assets/game-pubg.jpg";
 import valorant from "@/assets/game-valorant.jpg";
 import steam from "@/assets/game-steam.jpg";
 import gplay from "@/assets/game-gplay.jpg";
+
+export const LOGO_URL = logo.url;
 
 export type Denomination = {
   id: string;
@@ -31,6 +33,7 @@ export type Product = {
   denominations: Denomination[];
 };
 
+// MLBB image: use the logo as the product cover so site visually matches the brand
 export const PRODUCTS: Product[] = [
   {
     slug: "mobile-legends",
@@ -38,22 +41,31 @@ export const PRODUCTS: Product[] = [
     publisher: "Moonton",
     currency: "Diamonds",
     tagline: "Top up MLBB diamonds instantly to your account.",
-    image: mlbb,
+    image: logo.url,
     accent: "from-fuchsia-500 to-violet-600",
     needsPlayerId: true,
     idLabel: "User ID (Zone ID)",
     idPlaceholder: "123456789 (1234)",
     denominations: [
-      { id: "m1", label: "86 Diamonds", price: 1.5 },
-      { id: "m2", label: "172 Diamonds", price: 3 },
-      { id: "m3", label: "257 Diamonds", price: 4.5 },
-      { id: "m4", label: "344 Diamonds", price: 6 },
-      { id: "m5", label: "706 Diamonds", price: 12, bonus: "+5%" },
-      { id: "m6", label: "1412 Diamonds", price: 24, bonus: "+10%" },
-      { id: "m7", label: "2195 Diamonds", price: 38, bonus: "+15%" },
-      { id: "m8", label: "Weekly Lite Pass", price: 0.55, priceINR: 45 },
-      { id: "m9", label: "Weekly Diamond Pass", price: 1.2, priceINR: 99 },
-      { id: "m10", label: "Membership", price: 4.8, priceINR: 399 },
+      // Diamonds
+      { id: "m-d5",    label: "💎 5 Diamonds",        price: 0.14, priceINR: 12 },
+      { id: "m-d11",   label: "💎 10 + 1 Diamonds",   price: 0.24, priceINR: 20 },
+      { id: "m-d22",   label: "💎 20 + 2 Diamonds",   price: 0.45, priceINR: 37 },
+      { id: "m-d56",   label: "💎 51 + 5 Diamonds",   price: 1.15, priceINR: 94.99 },
+      { id: "m-d112",  label: "💎 102 + 10 Diamonds", price: 2.13, priceINR: 176.97 },
+      { id: "m-d223",  label: "💎 203 + 20 Diamonds", price: 4.42, priceINR: 366.89 },
+      { id: "m-d336",  label: "💎 303 + 33 Diamonds", price: 6.69, priceINR: 554.96 },
+      { id: "m-d570",  label: "💎 504 + 66 Diamonds", price: 11.08, priceINR: 919.77 },
+      { id: "m-d1163", label: "💎 1007 + 156 Diamonds", price: 22.05, priceINR: 1830 },
+      { id: "m-d2398", label: "💎 2015 + 383 Diamonds", price: 44.07, priceINR: 3658 },
+      { id: "m-d6042", label: "💎 5035 + 1007 Diamonds", price: 109.58, priceINR: 9095 },
+      // First Top-Up
+      { id: "m-ft55",  label: "🎁 First Top-Up 50 + 5",   price: 1.11, priceINR: 92.33,  bonus: "First TU" },
+      { id: "m-ft165", label: "🎁 First Top-Up 150 + 15", price: 3.22, priceINR: 267.40, bonus: "First TU" },
+      { id: "m-ft275", label: "🎁 First Top-Up 250 + 25", price: 5.12, priceINR: 424.96, bonus: "First TU" },
+      { id: "m-ft565", label: "🎁 First Top-Up 500 + 65", price: 10.42, priceINR: 864.97, bonus: "First TU" },
+      // Weekly
+      { id: "m-wp",    label: "🎫 Weekly Diamond Pass",   price: 1.82, priceINR: 150.55, bonus: "Weekly" },
     ],
   },
   {
@@ -170,3 +182,11 @@ export const UPI_ID = "7679393645@kotakbank";
 export const UPI_MERCHANT = "Lakpa Tamang";
 export const buildUpiLink = (amountInr: number, note?: string) =>
   `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(UPI_MERCHANT)}&am=${amountInr}&cu=INR${note ? `&tn=${encodeURIComponent(note)}` : ""}`;
+
+// Order code generator: FM-XXXXXX
+export function generateOrderCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let s = "";
+  for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return `FM-${s}`;
+}

@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import { Gamepad2, MessageCircle, Mail, Shield, Phone, Facebook, Instagram, Send } from "lucide-react";
+import { MessageCircle, Mail, Shield, Phone, Facebook, Instagram, Send } from "lucide-react";
 import {
+  LOGO_URL,
   WHATSAPP_LINK,
   CONTACT_PHONE,
   CONTACT_EMAIL,
@@ -15,9 +16,7 @@ export function SiteFooter() {
       <div className="container mx-auto grid max-w-7xl gap-10 px-4 py-14 md:grid-cols-4">
         <div className="space-y-3">
           <div className="flex items-center gap-2 font-display text-lg font-bold">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-[image:var(--gradient-primary)] text-primary-foreground">
-              <Gamepad2 className="h-5 w-5" />
-            </span>
+            <img src={LOGO_URL} alt="Fatui Market" className="h-9 w-9 rounded-xl object-cover" />
             Fatui Market
           </div>
           <p className="text-sm text-muted-foreground">
@@ -40,6 +39,7 @@ export function SiteFooter() {
         <div>
           <h4 className="mb-3 text-sm font-semibold">Legal</h4>
           <ul className="space-y-2 text-sm text-muted-foreground">
+            <li><Link to="/dashboard" className="hover:text-foreground">My orders</Link></li>
             <li><Link to="/terms" className="hover:text-foreground">Terms & Conditions</Link></li>
             <li><Link to="/privacy" className="hover:text-foreground">Privacy Policy</Link></li>
             <li><Link to="/refund" className="hover:text-foreground">Refund Policy</Link></li>
