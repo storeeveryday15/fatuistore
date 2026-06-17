@@ -27,6 +27,7 @@ type Order = {
   screenshot_url: string | null;
   admin_notes: string | null;
   completed_at: string | null;
+  rejected_at?: string | null;
   status: string;
   created_at: string;
 };
