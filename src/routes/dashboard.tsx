@@ -23,9 +23,13 @@ type Order = {
 
 const STATUS_STYLES: Record<string, string> = {
   pending_payment: "bg-warning/15 text-warning",
+  pending_verification: "bg-blue-500/15 text-blue-500",
   awaiting_verification: "bg-blue-500/15 text-blue-500",
+  processing: "bg-purple-500/15 text-purple-500",
   paid: "bg-success/15 text-success",
+  completed: "bg-success/20 text-success",
   delivered: "bg-success/20 text-success",
+  rejected: "bg-destructive/15 text-destructive",
   refunded: "bg-muted text-muted-foreground",
   cancelled: "bg-destructive/15 text-destructive",
 };
