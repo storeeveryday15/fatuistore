@@ -14,10 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_config: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
+          admin_notes: string | null
           amount_inr: number | null
           amount_usd: number | null
+          completed_at: string | null
           created_at: string
           currency: string
           customer_contact: string | null
@@ -27,9 +47,14 @@ export type Database = {
           notes: string | null
           order_code: string
           payment_method: string | null
+          player_name: string | null
+          processing_at: string | null
           product_name: string
           product_slug: string
           region: string
+          rejected_at: string | null
+          screenshot_url: string | null
+          server_id: string | null
           status: string
           tier_label: string
           updated_at: string
@@ -37,8 +62,10 @@ export type Database = {
           utr: string | null
         }
         Insert: {
+          admin_notes?: string | null
           amount_inr?: number | null
           amount_usd?: number | null
+          completed_at?: string | null
           created_at?: string
           currency?: string
           customer_contact?: string | null
@@ -48,9 +75,14 @@ export type Database = {
           notes?: string | null
           order_code: string
           payment_method?: string | null
+          player_name?: string | null
+          processing_at?: string | null
           product_name: string
           product_slug: string
           region?: string
+          rejected_at?: string | null
+          screenshot_url?: string | null
+          server_id?: string | null
           status?: string
           tier_label: string
           updated_at?: string
@@ -58,8 +90,10 @@ export type Database = {
           utr?: string | null
         }
         Update: {
+          admin_notes?: string | null
           amount_inr?: number | null
           amount_usd?: number | null
+          completed_at?: string | null
           created_at?: string
           currency?: string
           customer_contact?: string | null
@@ -69,9 +103,14 @@ export type Database = {
           notes?: string | null
           order_code?: string
           payment_method?: string | null
+          player_name?: string | null
+          processing_at?: string | null
           product_name?: string
           product_slug?: string
           region?: string
+          rejected_at?: string | null
+          screenshot_url?: string | null
+          server_id?: string | null
           status?: string
           tier_label?: string
           updated_at?: string
@@ -86,21 +125,27 @@ export type Database = {
           country: string | null
           created_at: string
           display_name: string | null
+          email: string | null
           id: string
+          username: string | null
         }
         Insert: {
           contact?: string | null
           country?: string | null
           created_at?: string
           display_name?: string | null
+          email?: string | null
           id: string
+          username?: string | null
         }
         Update: {
           contact?: string | null
           country?: string | null
           created_at?: string
           display_name?: string | null
+          email?: string | null
           id?: string
+          username?: string | null
         }
         Relationships: []
       }
