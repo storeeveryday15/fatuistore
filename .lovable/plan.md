@@ -1,58 +1,76 @@
-This is a big set of features. Here's how I'll ship it in one go. A few items need your input before I start — see "Decisions needed" at the end.
+# Fatui Market — Complete Admin & Order System
 
-## 1. Enable Lovable Cloud (backend)
-Required for orders, auth, admin panel, customer dashboard, notifications, and live chat history. I'll enable it as the first step.
+## 1. Secrets (you'll re-enter via secure form, don't paste in chat again)
+I'll request these via the secret tool — your earlier values were sent in plain chat, so for safety I'll prompt for fresh entries:
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_CHAT_ID`
+- `RESEND_API_KEY`
+- `ADMIN_EMAIL` (the email your admin account uses)
 
-## 2. New logo
-Save the uploaded image as the site logo and use it in the header, footer, and favicon. Update page title metadata to match the brand.
+**Recommendation:** rotate the bot token at @BotFather and the Resend key, since the originals were shared in plain text.
 
-## 3. Updated MLBB pricing
-Replace the MLBB product with your new tiers (all INR):
-- Diamonds: 5 / 10+1 / 20+2 / 51+5 / 102+10 / 203+20 / 303+33 / 504+66 / 1007+156 / 2015+383 / 5035+1007
-- First Top-Up: 50+5 / 150+15 / 250+25 / 500+65
-- Weekly Diamond Pass: ₹150.55
-Each tier shows its exact ₹ amount and generates a UPI QR with that amount pre-filled (UPI ID `7679393645@kotakbank`, name Lakpa Tamang).
+## 2. Auth Gate
+- `/auth` page (sign up + login, email/password + Google).
+- Profile fields: email, username, registration date (already in `profiles`; add `username`).
+- **Gate the entire store**: move `/`, `/products/$slug`, `/orders/$code`, `/dashboard` under `_authenticated/`. Unauthenticated visitors land on `/auth`.
+- Auto-grant `admin` role to the configured `ADMIN_EMAIL` via a DB trigger on `auth.users` insert + a one-time backfill.
 
-## 4. Checkout + payment verification (no WhatsApp required)
-New checkout flow:
-1. Customer picks a product + tier, enters game ID / contact.
-2. System creates an `order` row with a short Order ID (e.g. `FM-7K3QX9`) and status `pending_payment`.
-3. Indian users see the UPI QR + "Pay with UPI" button. International users see PayPal / Card placeholder buttons (non-functional placeholders until you connect a real provider).
-4. After paying, customer enters the UPI transaction reference (UTR) on the order page. Status moves to `awaiting_verification`.
-5. Admin verifies in admin panel → status becomes `paid` → then `delivered`.
-WhatsApp button stays as optional support, not as the payment path.
+## 3. Checkout Flow (two-step)
+- **Step 1 — Details form** on product page: Username, Game UID, Server ID (optional), Email (prefilled), Package tier. QR is hidden.
+- On "Continue to Payment" → create `order` row (status `pending_payment`) → navigate to `/orders/$code`.
+- **Step 2 — Payment page**: dynamic UPI QR + amount + merchant name + "Upload payment screenshot" → status becomes `pending_verification`.
 
-## 5. Customer accounts + dashboard
-- Email/password sign-up & login (Lovable Cloud auth, auto-confirm enabled so no email setup needed).
-- `/dashboard` route: lists the signed-in user's orders with Order ID, product, amount, status, date, and a detail page to re-show QR / submit UTR / view delivery info.
+## 4. Database changes (new migration)
+- `profiles`: add `username text unique`, `email text`.
+- `orders`: add `server_id text`, `screenshot_url text`, `admin_notes text`, `completed_at timestamptz`, `rejected_at timestamptz`. Replace status vocabulary with: `pending_payment`, `pending_verification`, `processing`, `completed`, `rejected`.
+- New storage bucket `payment-screenshots` (private). RLS: customer can insert/read own; admin can read all.
+- Trigger `auto_grant_admin()` on `auth.users` insert: if `NEW.email = current_setting('app.admin_email', true)` grant admin role. Set GUC via migration using the env value; since GUCs don't read env, instead the trigger compares against a row in a `app_config(key,value)` table seeded with the admin email.
+- Realtime: keep only safe ticker view; remove broad anon read (already locked down last turn).
 
-## 6. Admin panel
-- `/admin` route protected by an `admin` role (separate `user_roles` table + `has_role` function, per security best practice).
-- Tabs: Orders (all), Payments (verify UTR, mark paid/refunded), Users.
-- I'll seed your account as admin once you tell me which email to use.
+## 5. Admin Panel `/admin` (admin role only)
+- **Dashboard**: total orders, pending, completed, registered users, revenue today (sum `amount_inr` where status=completed today).
+- **Users tab**: list profiles, search by username/email, registration date.
+- **Orders tab**: table with username, game UID, product, amount, status, screenshot thumbnail. Filters by status, search by order code/email/UID.
+- **Order detail drawer**: full info + screenshot preview + admin notes textarea + action buttons: Mark Pending / Processing / Completed / Rejected. Status change writes `completed_at`/`rejected_at`, fires notification.
 
-## 7. Live orders ticker (blurred)
-Under the "Fatui Market" hero word, a horizontally scrolling ticker of recent orders: "FM-7K3QX9 • MLBB 102+10 • ₹176.97 • 2m ago" — names blurred with CSS `filter: blur` + low opacity for social proof.
+## 6. Customer Dashboard `/dashboard`
+- List of own orders with live status. Detail page shows status timeline, screenshot, admin notes when rejected.
 
-## 8. Live chat bot
-Floating chat widget bottom-right. Rule-based bot (instant replies for common questions: pricing, delivery time, payment help, refund). Escalate-to-human option that creates a `support_message` row visible in admin panel. No AI cost unless you want me to wire Lovable AI Gateway for free-form answers — say the word and I'll add it.
+## 7. Notifications
+TanStack server function `notifyOrderEvent({ orderId, event })` called from admin status-change and order-create handlers. Sends:
+- **Telegram** via Bot API `sendMessage` to `TELEGRAM_CHAT_ID` with order code, username, UID, package, ₹ amount, event type.
+- **Email** via Resend to customer email — templates: order received, payment received, completed, rejected. Also CC `fatuimarket@gmail.com` for new orders.
 
-## 9. Order notifications (Telegram + Email)
-A Cloud edge function fires on new orders:
-- **Telegram**: sends to your bot. You'll need to create a bot via @BotFather and give me the bot token + your chat ID (DM the bot, I'll show you how to grab the chat ID).
-- **Email**: sends to `fatuimarket@gmail.com` via Resend (free tier). You'll need a Resend API key — free signup at resend.com.
-I'll store both as secrets. If you'd rather skip one, tell me which.
+## 8. Security
+- All admin routes under `_authenticated/_admin/` layout with `has_role(uid,'admin')` check (server-fn gate + client UI hiding).
+- Storage bucket private; signed URLs only for admin + owning customer.
+- `user_roles` stays write-locked (existing).
+- Validate all inputs with zod on both client and server fn.
 
-## Technical notes
-- DB tables: `profiles`, `user_roles` (enum: `admin`,`customer`), `orders`, `order_items`, `payments`, `support_messages`, `chat_messages`. All with RLS — customers see only their own rows; admins see all via `has_role`.
-- Edge function: `notify-order` (Telegram + Resend) triggered from client after insert (or via DB webhook).
-- Live ticker uses Cloud Realtime subscription on `orders` table.
-- Payment placeholders for PayPal/Card render UI only; clicking shows "Coming soon — contact support" until you connect Stripe/Paddle. I can wire Stripe later in one step if you want real card payments.
+## Files
 
-## Decisions needed before I build
-1. **Admin email** — which email should I grant admin role to? (Your account on the site.)
-2. **Telegram bot token + chat ID** — do you have a bot yet, or want me to give you a 30-second setup guide first?
-3. **Resend API key for email notifications** — okay to use Resend? (Free, no credit card.)
-4. **PayPal / Card** — keep as "Coming soon" placeholders for now, or do you want me to enable real Stripe payments in this same change?
+**New**
+- `src/routes/_authenticated/route.tsx` (integration-managed gate — confirm exists, else create)
+- `src/routes/_authenticated/index.tsx` (move current home)
+- `src/routes/_authenticated/products.$slug.tsx` (move)
+- `src/routes/_authenticated/orders.$code.tsx` (move; adds screenshot upload)
+- `src/routes/_authenticated/dashboard.tsx` (move)
+- `src/routes/_authenticated/_admin/route.tsx` (admin gate)
+- `src/routes/_authenticated/_admin/admin.tsx` (dashboard + tabs)
+- `src/lib/orders.functions.ts` (createOrder, submitScreenshot, listMyOrders, adminListOrders, adminUpdateStatus)
+- `src/lib/notify.server.ts` (telegram + resend senders)
+- `src/lib/notify.functions.ts` (calls notify.server)
+- `supabase/migrations/<ts>_admin_system.sql`
 
-Reply with answers (or "go ahead with placeholders / I'll send keys after") and I'll start building.
+**Edited**
+- `src/components/site-header.tsx` (auth state, hide admin link from non-admins, sign out)
+- `src/routes/auth.tsx` (username field on signup)
+- `src/routes/__root.tsx` (auth state listener if missing)
+
+## Open questions
+1. **Telegram credentials**: OK to set the secrets via secure form (recommend rotating first)? Reply "yes" or "use what I sent".
+2. **Admin email**: which exact email should auto-receive admin role? (e.g. `fatuimarket@gmail.com`?)
+3. **Resend "from" address**: I'll use `Fatui Market <onboarding@resend.dev>` until you verify a domain — OK?
+4. **Existing orders** in DB: keep, or wipe and start fresh with the new status vocabulary?
+
+Once you answer, I'll build it end-to-end.
