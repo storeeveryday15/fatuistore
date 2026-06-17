@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ShieldCheck, MessageSquare } from "lucide-react";
+import { ShieldCheck, MessageSquare, Users, Package, Search, Eye } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin — Fatui Market" }] }),
@@ -14,8 +14,9 @@ type Order = {
   order_code: string;
   user_id: string | null;
   customer_email: string | null;
-  customer_contact: string | null;
+  player_name: string | null;
   game_id: string | null;
+  server_id: string | null;
   product_name: string;
   tier_label: string;
   amount_inr: number | null;
@@ -23,41 +24,65 @@ type Order = {
   currency: string;
   payment_method: string | null;
   utr: string | null;
-  status: string;
-  created_at: string;
-  notes: string | null;
-};
-
-type Support = {
-  id: string;
-  name: string | null;
-  contact: string | null;
-  message: string;
+  screenshot_url: string | null;
+  admin_notes: string | null;
+  completed_at: string | null;
   status: string;
   created_at: string;
 };
 
-const STATUSES = ["pending_payment", "awaiting_verification", "paid", "delivered", "refunded", "cancelled"];
+type Support = { id: string; name: string | null; contact: string | null; message: string; status: string; created_at: string };
+type Profile = { id: string; username: string | null; email: string | null; display_name: string | null; created_at: string };
+
+const STATUSES = ["pending_payment", "pending_verification", "processing", "completed", "rejected"] as const;
+
+const STATUS_STYLES: Record<string, string> = {
+  pending_payment: "bg-warning/15 text-warning",
+  pending_verification: "bg-blue-500/15 text-blue-500",
+  awaiting_verification: "bg-blue-500/15 text-blue-500",
+  processing: "bg-purple-500/15 text-purple-500",
+  paid: "bg-success/15 text-success",
+  completed: "bg-success/20 text-success",
+  delivered: "bg-success/20 text-success",
+  rejected: "bg-destructive/15 text-destructive",
+  refunded: "bg-muted text-muted-foreground",
+  cancelled: "bg-destructive/15 text-destructive",
+};
 
 function AdminPage() {
   const [ready, setReady] = useState(false);
-  const [tab, setTab] = useState<"orders" | "support">("orders");
+  const [tab, setTab] = useState<"dashboard" | "orders" | "users" | "support">("dashboard");
   const [orders, setOrders] = useState<Order[]>([]);
+  const [users, setUsers] = useState<Profile[]>([]);
   const [support, setSupport] = useState<Support[]>([]);
   const [filter, setFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const [activeOrder, setActiveOrder] = useState<Order | null>(null);
+  const [shotUrl, setShotUrl] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const load = async () => {
-    const { data: o } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+    const [{ data: o }, { data: s }, { data: p }] = await Promise.all([
+      supabase.from("orders").select("*").order("created_at", { ascending: false }),
+      supabase.from("support_messages").select("*").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+    ]);
     setOrders((o ?? []) as Order[]);
-    const { data: s } = await supabase.from("support_messages").select("*").order("created_at", { ascending: false });
     setSupport((s ?? []) as Support[]);
+    setUsers((p ?? []) as Profile[]);
   };
 
   useEffect(() => {
     (async () => {
       const { data: u } = await supabase.auth.getUser();
-      if (!u.user) { navigate({ to: "/auth" }); return; }
+      if (!u.user) { navigate({ to: "/auth", search: { redirect: "/admin" } }); return; }
+      // try to auto-claim admin if user matches ADMIN_EMAIL
+      try {
+        const { data: sess } = await supabase.auth.getSession();
+        if (sess.session?.access_token) {
+          await fetch("/api/public/claim-admin", { method: "POST", headers: { authorization: `Bearer ${sess.session.access_token}` } });
+        }
+      } catch { /* ignore */ }
       const { data: role } = await supabase.from("user_roles").select("role").eq("user_id", u.user.id).eq("role", "admin").maybeSingle();
       if (!role) { toast.error("Admin access required"); navigate({ to: "/" }); return; }
       setReady(true);
@@ -65,19 +90,60 @@ function AdminPage() {
     })();
   }, [navigate]);
 
-  const updateOrder = async (id: string, patch: Partial<Order>) => {
+  const openOrder = async (o: Order) => {
+    setActiveOrder(o);
+    setShotUrl(null);
+    if (o.screenshot_url) {
+      const { data } = await supabase.storage.from("payment-screenshots").createSignedUrl(o.screenshot_url, 600);
+      setShotUrl(data?.signedUrl ?? null);
+    }
+  };
+
+  const updateOrder = async (id: string, patch: Partial<Order>, event?: "processing" | "completed" | "rejected") => {
+    if (event === "completed") patch.completed_at = new Date().toISOString();
     const { error } = await supabase.from("orders").update(patch).eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Order updated");
-    load();
+    if (event) {
+      const order = orders.find((x) => x.id === id);
+      if (order) {
+        fetch("/api/public/notify-order", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ order_code: order.order_code, event }),
+        }).catch(() => {});
+      }
+    }
+    await load();
+    if (activeOrder?.id === id) {
+      const fresh = orders.find((o) => o.id === id);
+      if (fresh) setActiveOrder({ ...fresh, ...patch });
+    }
   };
 
   if (!ready) return <div className="container mx-auto max-w-5xl px-4 py-16 text-center text-sm text-muted-foreground">Loading admin…</div>;
 
-  const filtered = filter === "all" ? orders : orders.filter((o) => o.status === filter);
-  const totalRevenue = orders
-    .filter((o) => o.status === "paid" || o.status === "delivered")
-    .reduce((sum, o) => sum + (Number(o.amount_inr) || 0), 0);
+  const filtered = orders.filter((o) => {
+    if (filter !== "all" && o.status !== filter) return false;
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      o.order_code.toLowerCase().includes(q) ||
+      (o.customer_email ?? "").toLowerCase().includes(q) ||
+      (o.player_name ?? "").toLowerCase().includes(q) ||
+      (o.game_id ?? "").toLowerCase().includes(q)
+    );
+  });
+
+  const usersFiltered = users.filter((u) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      (u.username ?? "").toLowerCase().includes(q) ||
+      (u.email ?? "").toLowerCase().includes(q) ||
+      (u.display_name ?? "").toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-10">
@@ -86,82 +152,50 @@ function AdminPage() {
         <h1 className="text-3xl font-bold">Admin panel</h1>
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-4">
-        <Stat label="Total orders" value={orders.length.toString()} />
-        <Stat label="Pending verify" value={orders.filter((o) => o.status === "awaiting_verification").length.toString()} highlight />
-        <Stat label="Delivered" value={orders.filter((o) => o.status === "delivered").length.toString()} />
-        <Stat label="Revenue (paid)" value={`₹${totalRevenue.toFixed(0)}`} />
+      <Dashboard orders={orders} users={users} />
+
+      <div className="mt-8 flex flex-wrap gap-2 border-b border-border">
+        <TabBtn active={tab === "dashboard"} onClick={() => setTab("dashboard")}><Package className="mr-1.5 inline h-4 w-4" /> Dashboard</TabBtn>
+        <TabBtn active={tab === "orders"} onClick={() => setTab("orders")}>Orders ({orders.length})</TabBtn>
+        <TabBtn active={tab === "users"} onClick={() => setTab("users")}><Users className="mr-1.5 inline h-4 w-4" /> Users ({users.length})</TabBtn>
+        <TabBtn active={tab === "support"} onClick={() => setTab("support")}><MessageSquare className="mr-1.5 inline h-4 w-4" /> Support ({support.filter(s => s.status === "open").length})</TabBtn>
       </div>
 
-      <div className="mt-8 flex gap-2 border-b border-border">
-        <TabBtn active={tab === "orders"} onClick={() => setTab("orders")}>Orders</TabBtn>
-        <TabBtn active={tab === "support"} onClick={() => setTab("support")}>
-          <MessageSquare className="mr-1.5 inline h-4 w-4" /> Support ({support.filter(s => s.status === "open").length})
-        </TabBtn>
-      </div>
+      {(tab === "orders" || tab === "users") && (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tab === "orders" ? "Search code, email, UID, player…" : "Search username or email…"} className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-sm" />
+          </div>
+          {tab === "orders" && ["all", ...STATUSES].map((s) => (
+            <button key={s} onClick={() => setFilter(s)} className={`rounded-full border px-3 py-1 text-xs ${filter === s ? "border-[var(--neon)] text-foreground" : "border-border text-muted-foreground hover:border-foreground/30"}`}>{s.replace(/_/g, " ")}</button>
+          ))}
+        </div>
+      )}
 
       {tab === "orders" && (
-        <>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {["all", ...STATUSES].map((s) => (
-              <button key={s} onClick={() => setFilter(s)} className={`rounded-full border px-3 py-1 text-xs ${filter === s ? "border-[var(--neon)] text-foreground" : "border-border text-muted-foreground hover:border-foreground/30"}`}>
-                {s.replace(/_/g, " ")}
-              </button>
-            ))}
-          </div>
-          <div className="mt-4 overflow-x-auto rounded-xl border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-secondary/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-3">Order</th>
-                  <th className="px-3 py-3">Product / Tier</th>
-                  <th className="px-3 py-3">Customer</th>
-                  <th className="px-3 py-3">Amount</th>
-                  <th className="px-3 py-3">UTR</th>
-                  <th className="px-3 py-3">Status</th>
-                  <th className="px-3 py-3">Actions</th>
+        <OrdersTable orders={filtered} onOpen={openOrder} onQuickStatus={(id, st, ev) => updateOrder(id, { status: st }, ev)} />
+      )}
+
+      {tab === "users" && (
+        <div className="mt-4 overflow-x-auto rounded-xl border border-border">
+          <table className="w-full text-sm">
+            <thead className="bg-secondary/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
+              <tr><th className="px-3 py-3">Username</th><th className="px-3 py-3">Email</th><th className="px-3 py-3">Display name</th><th className="px-3 py-3">Joined</th></tr>
+            </thead>
+            <tbody>
+              {usersFiltered.map((u) => (
+                <tr key={u.id} className="border-t border-border">
+                  <td className="px-3 py-3 font-mono">{u.username ?? "—"}</td>
+                  <td className="px-3 py-3">{u.email ?? "—"}</td>
+                  <td className="px-3 py-3">{u.display_name ?? "—"}</td>
+                  <td className="px-3 py-3 text-xs text-muted-foreground">{new Date(u.created_at).toLocaleString()}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {filtered.map((o) => (
-                  <tr key={o.id} className="border-t border-border align-top">
-                    <td className="px-3 py-3">
-                      <div className="font-mono text-[var(--neon)]">{o.order_code}</div>
-                      <div className="text-[11px] text-muted-foreground">{new Date(o.created_at).toLocaleString()}</div>
-                    </td>
-                    <td className="px-3 py-3">
-                      <div className="font-semibold">{o.product_name}</div>
-                      <div className="text-xs text-muted-foreground">{o.tier_label}</div>
-                      {o.game_id && <div className="mt-1 text-xs">🎮 {o.game_id}</div>}
-                    </td>
-                    <td className="px-3 py-3">
-                      <div>{o.customer_email ?? "—"}</div>
-                      <div className="text-xs text-muted-foreground">{o.customer_contact ?? ""}</div>
-                    </td>
-                    <td className="px-3 py-3 font-semibold">
-                      {o.currency === "INR" ? `₹${o.amount_inr}` : `$${o.amount_usd}`}
-                      <div className="text-[11px] text-muted-foreground">{o.payment_method ?? ""}</div>
-                    </td>
-                    <td className="px-3 py-3 font-mono text-xs">{o.utr ?? "—"}</td>
-                    <td className="px-3 py-3">
-                      <select value={o.status} onChange={(e) => updateOrder(o.id, { status: e.target.value })} className="rounded-md border border-border bg-background px-2 py-1 text-xs">
-                        {STATUSES.map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
-                      </select>
-                    </td>
-                    <td className="px-3 py-3">
-                      <div className="flex flex-col gap-1">
-                        <button onClick={() => updateOrder(o.id, { status: "paid" })} className="rounded-md bg-success/15 px-2 py-1 text-[11px] font-semibold text-success hover:bg-success/25">Mark paid</button>
-                        <button onClick={() => updateOrder(o.id, { status: "delivered" })} className="rounded-md bg-[var(--neon)]/15 px-2 py-1 text-[11px] font-semibold text-[var(--neon)] hover:bg-[var(--neon)]/25">Mark delivered</button>
-                        <button onClick={() => updateOrder(o.id, { status: "refunded" })} className="rounded-md bg-muted px-2 py-1 text-[11px] font-semibold text-muted-foreground">Refund</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {filtered.length === 0 && <tr><td colSpan={7} className="px-3 py-10 text-center text-sm text-muted-foreground">No orders.</td></tr>}
-              </tbody>
-            </table>
-          </div>
-        </>
+              ))}
+              {usersFiltered.length === 0 && <tr><td colSpan={4} className="px-3 py-10 text-center text-sm text-muted-foreground">No users.</td></tr>}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {tab === "support" && (
@@ -173,17 +207,8 @@ function AdminPage() {
                   <div className="text-sm font-semibold">{s.name || "Guest"}</div>
                   <div className="text-xs text-muted-foreground">{s.contact ?? ""} · {new Date(s.created_at).toLocaleString()}</div>
                 </div>
-                <select
-                  value={s.status}
-                  onChange={async (e) => {
-                    await supabase.from("support_messages").update({ status: e.target.value }).eq("id", s.id);
-                    load();
-                  }}
-                  className="rounded-md border border-border bg-background px-2 py-1 text-xs"
-                >
-                  <option value="open">open</option>
-                  <option value="replied">replied</option>
-                  <option value="closed">closed</option>
+                <select value={s.status} onChange={async (e) => { await supabase.from("support_messages").update({ status: e.target.value }).eq("id", s.id); load(); }} className="rounded-md border border-border bg-background px-2 py-1 text-xs">
+                  <option value="open">open</option><option value="replied">replied</option><option value="closed">closed</option>
                 </select>
               </div>
               <p className="mt-2 text-sm">{s.message}</p>
@@ -192,8 +217,139 @@ function AdminPage() {
           {support.length === 0 && <div className="surface-card p-10 text-center text-sm text-muted-foreground">No messages yet.</div>}
         </div>
       )}
+
+      {activeOrder && (
+        <OrderDrawer order={activeOrder} screenshotUrl={shotUrl} onClose={() => setActiveOrder(null)} onAction={updateOrder} />
+      )}
     </div>
   );
+}
+
+function Dashboard({ orders, users }: { orders: Order[]; users: Profile[] }) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const completed = orders.filter((o) => o.status === "completed" || o.status === "delivered");
+  const revenueToday = completed.filter((o) => o.completed_at && new Date(o.completed_at) >= today).reduce((s, o) => s + (Number(o.amount_inr) || 0), 0);
+  const pending = orders.filter((o) => o.status === "pending_payment" || o.status === "pending_verification" || o.status === "awaiting_verification").length;
+  return (
+    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <Stat label="Total orders" value={orders.length.toString()} />
+      <Stat label="Pending" value={pending.toString()} highlight />
+      <Stat label="Completed" value={completed.length.toString()} />
+      <Stat label="Registered users" value={users.length.toString()} />
+      <Stat label="Revenue today" value={`₹${revenueToday.toFixed(0)}`} />
+    </div>
+  );
+}
+
+function OrdersTable({ orders, onOpen, onQuickStatus }: { orders: Order[]; onOpen: (o: Order) => void; onQuickStatus: (id: string, status: string, event?: "processing" | "completed" | "rejected") => void }) {
+  return (
+    <div className="mt-4 overflow-x-auto rounded-xl border border-border">
+      <table className="w-full text-sm">
+        <thead className="bg-secondary/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
+          <tr>
+            <th className="px-3 py-3">Order</th><th className="px-3 py-3">Customer</th><th className="px-3 py-3">Product</th><th className="px-3 py-3">Amount</th><th className="px-3 py-3">Proof</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {orders.map((o) => (
+            <tr key={o.id} className="border-t border-border align-top">
+              <td className="px-3 py-3">
+                <div className="font-mono text-[var(--neon)]">{o.order_code}</div>
+                <div className="text-[11px] text-muted-foreground">{new Date(o.created_at).toLocaleString()}</div>
+              </td>
+              <td className="px-3 py-3">
+                <div className="font-medium">{o.player_name ?? "—"}</div>
+                <div className="text-xs text-muted-foreground">{o.customer_email ?? "—"}</div>
+                {o.game_id && <div className="mt-1 text-xs">🎮 {o.game_id}</div>}
+              </td>
+              <td className="px-3 py-3">
+                <div className="font-semibold">{o.product_name}</div>
+                <div className="text-xs text-muted-foreground">{o.tier_label}</div>
+              </td>
+              <td className="px-3 py-3 font-semibold">
+                {o.currency === "INR" ? `₹${o.amount_inr}` : `$${o.amount_usd}`}
+                {o.utr && <div className="text-[11px] font-mono text-muted-foreground">UTR: {o.utr}</div>}
+              </td>
+              <td className="px-3 py-3">
+                {o.screenshot_url ? <span className="rounded bg-success/15 px-2 py-1 text-[11px] font-semibold text-success">✓ uploaded</span> : <span className="text-[11px] text-muted-foreground">none</span>}
+              </td>
+              <td className="px-3 py-3">
+                <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_STYLES[o.status] ?? "bg-secondary"}`}>{o.status.replace(/_/g, " ")}</span>
+              </td>
+              <td className="px-3 py-3">
+                <div className="flex flex-col gap-1">
+                  <button onClick={() => onOpen(o)} className="inline-flex items-center justify-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] hover:bg-secondary"><Eye className="h-3 w-3" /> View</button>
+                  <button onClick={() => onQuickStatus(o.id, "processing", "processing")} className="rounded-md bg-purple-500/15 px-2 py-1 text-[11px] font-semibold text-purple-500 hover:bg-purple-500/25">Processing</button>
+                  <button onClick={() => onQuickStatus(o.id, "completed", "completed")} className="rounded-md bg-success/15 px-2 py-1 text-[11px] font-semibold text-success hover:bg-success/25">Complete</button>
+                  <button onClick={() => onQuickStatus(o.id, "rejected", "rejected")} className="rounded-md bg-destructive/15 px-2 py-1 text-[11px] font-semibold text-destructive hover:bg-destructive/25">Reject</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+          {orders.length === 0 && <tr><td colSpan={7} className="px-3 py-10 text-center text-sm text-muted-foreground">No orders.</td></tr>}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function OrderDrawer({ order, screenshotUrl, onClose, onAction }: {
+  order: Order;
+  screenshotUrl: string | null;
+  onClose: () => void;
+  onAction: (id: string, patch: Partial<Order>, event?: "processing" | "completed" | "rejected") => void;
+}) {
+  const [notes, setNotes] = useState(order.admin_notes ?? "");
+  useEffect(() => { setNotes(order.admin_notes ?? ""); }, [order.id]);
+  const saveNotes = () => onAction(order.id, { admin_notes: notes });
+  return (
+    <div className="fixed inset-0 z-50 flex" onClick={onClose}>
+      <div className="flex-1 bg-black/50" />
+      <div className="h-full w-full max-w-xl overflow-y-auto bg-card p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="font-mono text-lg font-bold text-[var(--neon)]">{order.order_code}</div>
+            <div className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString()}</div>
+          </div>
+          <button onClick={onClose} className="rounded-md border border-border px-2 py-1 text-xs">Close</button>
+        </div>
+        <div className="mt-4 grid gap-2 rounded-lg bg-background/40 p-4 text-sm">
+          <KV k="Status" v={order.status} />
+          <KV k="Product" v={`${order.product_name} — ${order.tier_label}`} />
+          <KV k="Player" v={order.player_name ?? "—"} />
+          <KV k="Game UID" v={order.game_id ?? "—"} />
+          {order.server_id && <KV k="Server" v={order.server_id} />}
+          <KV k="Email" v={order.customer_email ?? "—"} />
+          <KV k="Amount" v={order.currency === "INR" ? `₹${order.amount_inr}` : `$${order.amount_usd}`} />
+          <KV k="UTR" v={order.utr ?? "—"} />
+          {order.completed_at && <KV k="Completed" v={new Date(order.completed_at).toLocaleString()} />}
+        </div>
+        <div className="mt-4">
+          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment screenshot</div>
+          {screenshotUrl ? (
+            <a href={screenshotUrl} target="_blank" rel="noreferrer">
+              <img src={screenshotUrl} alt="Payment screenshot" className="mt-2 max-h-80 w-full rounded-lg border border-border object-contain" />
+            </a>
+          ) : <div className="mt-2 rounded-lg border border-dashed border-border p-6 text-center text-xs text-muted-foreground">No screenshot uploaded yet</div>}
+        </div>
+        <div className="mt-4">
+          <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Admin notes</label>
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" placeholder="Internal/customer-visible note" />
+          <button onClick={saveNotes} className="mt-2 rounded-md border border-border px-3 py-1.5 text-xs hover:bg-secondary">Save notes</button>
+        </div>
+        <div className="mt-6 grid grid-cols-2 gap-2">
+          <button onClick={() => onAction(order.id, { status: "pending_verification" })} className="rounded-lg bg-blue-500/15 px-3 py-2 text-sm font-semibold text-blue-500">Pending</button>
+          <button onClick={() => onAction(order.id, { status: "processing" }, "processing")} className="rounded-lg bg-purple-500/15 px-3 py-2 text-sm font-semibold text-purple-500">Processing</button>
+          <button onClick={() => onAction(order.id, { status: "completed" }, "completed")} className="rounded-lg bg-success/15 px-3 py-2 text-sm font-semibold text-success">Complete</button>
+          <button onClick={() => onAction(order.id, { status: "rejected", rejected_at: new Date().toISOString() }, "rejected")} className="rounded-lg bg-destructive/15 px-3 py-2 text-sm font-semibold text-destructive">Reject</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KV({ k, v }: { k: string; v: string }) {
+  return <div className="flex justify-between gap-3"><span className="text-muted-foreground">{k}</span><span className="font-medium text-right">{v}</span></div>;
 }
 
 function Stat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
@@ -213,3 +369,5 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
     </button>
   );
 }
+
+const _ = useMemo; // silence unused import warning
