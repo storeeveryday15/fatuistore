@@ -20,6 +20,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
 import { Route as OrdersCodeRouteImport } from './routes/orders.$code'
 import { Route as ApiPublicNotifyOrderRouteImport } from './routes/api/public/notify-order'
+import { Route as ApiPublicClaimAdminRouteImport } from './routes/api/public/claim-admin'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -76,6 +77,11 @@ const ApiPublicNotifyOrderRoute = ApiPublicNotifyOrderRouteImport.update({
   path: '/api/public/notify-order',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicClaimAdminRoute = ApiPublicClaimAdminRouteImport.update({
+  id: '/api/public/claim-admin',
+  path: '/api/public/claim-admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/orders/$code': typeof OrdersCodeRoute
   '/products/$slug': typeof ProductsSlugRoute
+  '/api/public/claim-admin': typeof ApiPublicClaimAdminRoute
   '/api/public/notify-order': typeof ApiPublicNotifyOrderRoute
 }
 export interface FileRoutesByTo {
@@ -101,6 +108,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/orders/$code': typeof OrdersCodeRoute
   '/products/$slug': typeof ProductsSlugRoute
+  '/api/public/claim-admin': typeof ApiPublicClaimAdminRoute
   '/api/public/notify-order': typeof ApiPublicNotifyOrderRoute
 }
 export interface FileRoutesById {
@@ -115,6 +123,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/orders/$code': typeof OrdersCodeRoute
   '/products/$slug': typeof ProductsSlugRoute
+  '/api/public/claim-admin': typeof ApiPublicClaimAdminRoute
   '/api/public/notify-order': typeof ApiPublicNotifyOrderRoute
 }
 export interface FileRouteTypes {
@@ -130,6 +139,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/orders/$code'
     | '/products/$slug'
+    | '/api/public/claim-admin'
     | '/api/public/notify-order'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -143,6 +153,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/orders/$code'
     | '/products/$slug'
+    | '/api/public/claim-admin'
     | '/api/public/notify-order'
   id:
     | '__root__'
@@ -156,6 +167,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/orders/$code'
     | '/products/$slug'
+    | '/api/public/claim-admin'
     | '/api/public/notify-order'
   fileRoutesById: FileRoutesById
 }
@@ -170,6 +182,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   OrdersCodeRoute: typeof OrdersCodeRoute
   ProductsSlugRoute: typeof ProductsSlugRoute
+  ApiPublicClaimAdminRoute: typeof ApiPublicClaimAdminRoute
   ApiPublicNotifyOrderRoute: typeof ApiPublicNotifyOrderRoute
 }
 
@@ -252,6 +265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicNotifyOrderRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/claim-admin': {
+      id: '/api/public/claim-admin'
+      path: '/api/public/claim-admin'
+      fullPath: '/api/public/claim-admin'
+      preLoaderRoute: typeof ApiPublicClaimAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -266,6 +286,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   OrdersCodeRoute: OrdersCodeRoute,
   ProductsSlugRoute: ProductsSlugRoute,
+  ApiPublicClaimAdminRoute: ApiPublicClaimAdminRoute,
   ApiPublicNotifyOrderRoute: ApiPublicNotifyOrderRoute,
 }
 export const routeTree = rootRouteImport
